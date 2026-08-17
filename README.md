@@ -173,12 +173,12 @@ boot, so there are no installer screens at all.
 In Terminal:
 
 ```bash
-git clone <THIS-REPO-URL> ~/vm
+git clone https://github.com/ardeshir/workspace.git ~/vm
 cd ~/vm
 ```
 
-Replace `<THIS-REPO-URL>` with the address you were given (it looks like
-`https://github.com/someone/vm.git`).
+That downloads this repo into a folder called `vm` in your home directory and
+moves you into it.
 
 ## B2. Make an SSH key
 
@@ -344,7 +344,7 @@ ssh devvm
 Inside the VM (i.e. after `ssh devvm`), run:
 
 ```bash
-git clone <THIS-REPO-URL> ~/vm
+git clone https://github.com/ardeshir/workspace.git ~/vm
 cd ~/vm
 ./provision.sh
 ```
