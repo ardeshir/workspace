@@ -1,0 +1,90 @@
+#cloud-config
+#
+# ============================================================================
+#  THIS FILE SETS UP YOUR VM'S USER ACCOUNT ON FIRST BOOT.
+#
+#  There are exactly TWO things you must change. They are marked EDIT 1 and
+#  EDIT 2 below. Everything else can stay as it is.
+#
+#  RULES (these matter, YAML is picky):
+#    * Use SPACES to indent. Never press the Tab key in this file.
+#    * Keep the '- ' and the spaces in front of it exactly as they are.
+#    * The first line must stay exactly: #cloud-config
+#
+#  After editing, save the file and run:  ./cloud-init/make-seed.sh
+# ============================================================================
+
+hostname: devvm
+manage_etc_hosts: true
+
+users:
+  - name: dev
+    gecos: Developer
+    groups: [sudo]
+    shell: /bin/bash
+    # Lets you use 'sudo' without retyping a password.
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+    ssh_authorized_keys:
+
+      # ---------------------------------------------------------------------
+      # EDIT 1 — YOUR SSH KEY
+      #
+      # On your Mac, in Terminal, run:
+      #     cat ~/.ssh/id_ed25519.pub
+      #
+      # If that says "No such file or directory", first run:
+      #     ssh-keygen -t ed25519 -C "dev vm"
+      # and press Return three times to accept the defaults, then run the
+      # 'cat' command again.
+      #
+      # Copy the ENTIRE line it prints (it starts with ssh-ed25519 and ends
+      # with your email) and paste it below, replacing
+      # REPLACE_WITH_YOUR_PUBLIC_KEY. Keep the '      - ' in front.
+      # ---------------------------------------------------------------------
+      - ssh-ed25519 REPLACE_WITH_YOUR_PUBLIC_KEY
+
+# ---------------------------------------------------------------------------
+# EDIT 2 — A PASSWORD FOR THE CONSOLE
+#
+# You will normally log in with your SSH key, not this password. It only
+# matters if you ever type into the VM's black console window directly.
+#
+# Below, change the word after the colon -- 'changeme' -- to a password you
+# will remember. Keep it on one line, in the form  dev:yourpassword
+# with no spaces and no quotes.
+# ---------------------------------------------------------------------------
+chpasswd:
+  expire: false
+  list: |
+    dev:changeme
+
+# Password logins over SSH stay OFF — your key is what gets you in.
+ssh_pwauth: false
+
+# Freshen the package list so the first 'apt install' works.
+package_update: true
+
+packages:
+  - curl
+  - git
+  - ca-certificates
+
+write_files:
+  - path: /etc/motd
+    content: |
+
+      Welcome to your dev VM.
+
+      Next step, if you haven't run it yet:
+
+          git clone <this-repo-url> ~/vm && cd ~/vm && ./provision.sh
+
+      Already provisioned? Check everything is healthy with:
+
+          ~/vm/verify.sh
+
+runcmd:
+  - [ systemctl, enable, --now, ssh ]
+
+final_message: "VM ready after $UPTIME seconds. Log in with: ssh dev@<ip>"

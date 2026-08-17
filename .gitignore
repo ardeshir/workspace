@@ -1,0 +1,13 @@
+# Downloaded and generated files -- everyone builds their own, none belong in git.
+*.iso
+*.img
+*.qcow2
+*.part
+SHA256SUMS*
+
+# Your own SSH key must never end up here.
+id_*
+*.pem
+*.key
+
+.DS_Store

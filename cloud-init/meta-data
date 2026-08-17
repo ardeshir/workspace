@@ -1,0 +1,16 @@
+instance-id: dev-001
+local-hostname: devvm
+
+# ---------------------------------------------------------------------------
+# About instance-id:
+#
+# The VM remembers this string. On boot it compares what it remembers with
+# what it reads here:
+#
+#   same value      -> "I've already been set up", settings are ignored
+#   different value -> "I'm a new machine", user-data is applied again
+#
+# So if you change user-data AFTER the VM already exists, also change
+# dev-001 to dev-002 here, rebuild the seed with ./cloud-init/make-seed.sh,
+# and reboot the VM. Otherwise your edits will appear to do nothing.
+# ---------------------------------------------------------------------------
