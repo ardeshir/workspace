@@ -38,29 +38,46 @@ users:
       # and press Return three times to accept the defaults, then run the
       # 'cat' command again.
       #
-      # Copy the ENTIRE line it prints (it starts with ssh-ed25519 and ends
-      # with your email) and paste it below, replacing
-      # REPLACE_WITH_YOUR_PUBLIC_KEY. Keep the '      - ' in front.
+      # Copy the ENTIRE line it prints. It looks like this, all on one line:
+      #
+      #     ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA...long...string you@yourmac
+      #
+      # Then select the whole placeholder below -- the words
+      # PASTE_YOUR_PUBLIC_KEY_LINE_HERE -- and paste your line over the top
+      # of it. Keep the '      - ' in front. The result should read:
+      #
+      #       - ssh-ed25519 AAAAC3Nza... you@yourmac
+      #
+      # NOT '- ssh-ed25519 ssh-ed25519 AAAA...'. If you see 'ssh-ed25519'
+      # twice, delete one of them -- a doubled-up key is rejected and you
+      # will not be able to log in.
       # ---------------------------------------------------------------------
-      - ssh-ed25519 REPLACE_WITH_YOUR_PUBLIC_KEY
+      - PASTE_YOUR_PUBLIC_KEY_LINE_HERE
 
 # ---------------------------------------------------------------------------
-# EDIT 2 — A PASSWORD FOR THE CONSOLE
+# EDIT 2 — YOUR PASSWORD
 #
-# You will normally log in with your SSH key, not this password. It only
-# matters if you ever type into the VM's black console window directly.
+# You will normally log in with your SSH key. This password is your backup:
+# it gets you in at the VM's black console window, and over SSH too, so a
+# mistyped key can never lock you out completely.
 #
-# Below, change the word after the colon -- 'changeme' -- to a password you
-# will remember. Keep it on one line, in the form  dev:yourpassword
-# with no spaces and no quotes.
+# Change 'changeme' below to a password you will remember. Keep the quotes.
 # ---------------------------------------------------------------------------
 chpasswd:
   expire: false
-  list: |
-    dev:changeme
+  users:
+    - name: dev
+      password: "changeme"
+      type: text
 
-# Password logins over SSH stay OFF — your key is what gets you in.
-ssh_pwauth: false
+# Allow password logins over SSH as a fallback.
+#
+# This is safe here: the VM has no public address. It sits on a private
+# network inside your Mac and is reachable only from your own machine.
+#
+# Once your SSH key is working and you're confident, you can set this to
+# false and rebuild the seed for a slightly tighter setup.
+ssh_pwauth: true
 
 # Freshen the package list so the first 'apt install' works.
 package_update: true

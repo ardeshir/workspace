@@ -212,15 +212,28 @@ open -e cloud-init/user-data
 Find this line:
 
 ```
-      - ssh-ed25519 REPLACE_WITH_YOUR_PUBLIC_KEY
+      - PASTE_YOUR_PUBLIC_KEY_LINE_HERE
 ```
 
-Replace `REPLACE_WITH_YOUR_PUBLIC_KEY` with the **whole line** that
-`cat ~/.ssh/id_ed25519.pub` printed. Keep the `      - ` at the start.
+Select the words `PASTE_YOUR_PUBLIC_KEY_LINE_HERE` and paste the **whole line**
+that `cat ~/.ssh/id_ed25519.pub` printed over the top of them. Keep the
+`      - ` at the start.
 
-While you're in there, find the line `dev:changeme` further down and change
-`changeme` to a password you'll remember — keep it as `dev:yourpassword`, one
-word, no spaces.
+When you're done the line should look like this — key type, then the long
+string, then your email, all on one line:
+
+```
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH8s... you@yourmac
+```
+
+> **The one mistake worth double-checking.** Make sure `ssh-ed25519` appears
+> **once**, not twice. A line like
+> `- ssh-ed25519 ssh-ed25519 AAAA...` is rejected by the VM, and the error you
+> get later says nothing about keys. `make-seed.sh` now checks for this and
+> will stop you, but it's easier to just get it right here.
+
+While you're in there, find `password: "changeme"` further down and change
+`changeme` to a password you'll remember. Keep the quotes.
 
 Save with `Cmd + S` and close the window.
 
@@ -304,9 +317,40 @@ The first time it asks `Are you sure you want to continue connecting?` — type
 `yes` and press Return.
 
 - **Path A** users: it asks for the password you set during installation.
-- **Path B** users: it lets you straight in using your key.
+- **Path B** users: it lets you straight in using your key. If it asks for a
+  password instead, that's fine — your password works too. It just means the
+  key didn't take, and [Step 6d](#6d-if-your-key-isnt-working-path-b) tells you
+  how to fix it.
 
 You're in when the prompt changes to `dev@devvm:~$`.
+
+## 6d. If your key isn't working (Path B)
+
+If you see:
+
+```
+dev@192.168.64.5: Permission denied (publickey).
+```
+
+your key didn't install correctly. The overwhelmingly common cause is a
+doubled key type in `user-data` — `ssh-ed25519 ssh-ed25519 AAAA...` instead of
+`ssh-ed25519 AAAA...`.
+
+**You are not locked out.** Log in at the VM's own console window with your
+username and password, then paste your key in by hand:
+
+```bash
+mkdir -p ~/.ssh && chmod 700 ~/.ssh
+echo 'PASTE_YOUR_PUBLIC_KEY_LINE_HERE' >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+```
+
+Replace `PASTE_YOUR_PUBLIC_KEY_LINE_HERE` with the output of
+`cat ~/.ssh/id_ed25519.pub` on your Mac — key type once, then the long string.
+Then try `ssh dev@<ip>` again from your Mac.
+
+To stop it recurring, also fix `cloud-init/user-data` on your Mac and re-run
+`./cloud-init/make-seed.sh`.
 
 ## 6c. Make it a one-word command
 
@@ -398,7 +442,8 @@ and battery otherwise.
 | `ssh: connect to host ... Connection refused` | VM is off, or SSH isn't running | Start it in UTM. Path A users: you probably missed the SSH Setup tick — see below |
 | `ssh: Could not resolve hostname devvm` | The `~/.ssh/config` entry is missing or misspelled | Redo step 6c |
 | `Operation timed out` when connecting | Wrong IP address | Redo step 6a — it likely changed |
-| `Permission denied (publickey)` | Your key isn't on the VM | Path B: your key wasn't pasted correctly. Rebuild the seed, bump `instance-id`, reboot |
+| `Permission denied (publickey)` | Your key isn't on the VM — usually `ssh-ed25519` pasted twice on one line | See [Step 6d](#6d-if-your-key-isnt-working-path-b). Log in at the console with your password and add the key by hand — you're not locked out |
+| Asked for a password when you expected the key to just work | Same as above — the key didn't install, so SSH fell back to your password | Log in with the password, then [Step 6d](#6d-if-your-key-isnt-working-path-b) |
 | VM boots back into the installer | The install ISO is still attached | Edit the VM → CD/DVD drive → **Clear** |
 | Path B: settings seem ignored | Usually a tab character in `user-data`, or an unchanged `instance-id` | Fix, run `make-seed.sh`, bump `instance-id`, reboot |
 | `No space left on device` | The 40 GB filled up | `docker system prune -a` clears the usual culprit |

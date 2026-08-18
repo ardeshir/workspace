@@ -29,7 +29,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 
 step "Checking user-data"
 
-if grep -q 'REPLACE_WITH_YOUR_PUBLIC_KEY' user-data; then
+if grep -q 'PASTE_YOUR_PUBLIC_KEY_LINE_HERE' user-data; then
   die "You haven't added your SSH key yet.
 
   1. Print your key:      cat ~/.ssh/id_ed25519.pub
@@ -38,19 +38,68 @@ if grep -q 'REPLACE_WITH_YOUR_PUBLIC_KEY' user-data; then
 
   2. Open the file:       open -e cloud-init/user-data
 
-  3. Replace the line
-         - ssh-ed25519 REPLACE_WITH_YOUR_PUBLIC_KEY
-     with your key, keeping the '      - ' at the start.
+  3. Paste your key over the words PASTE_YOUR_PUBLIC_KEY_LINE_HERE,
+     keeping the '      - ' at the start, so the line reads:
+
+         - ssh-ed25519 AAAAC3Nza... you@yourmac
 
   4. Save with Cmd+S, then run this script again."
 fi
 
-grep -qE '^[[:space:]]+- (ssh-ed25519|ssh-rsa|ecdsa-) ' user-data \
-  || die "No valid SSH key found in user-data.
+# Pull out the key line so we can inspect it properly. Everything after the
+# leading '- ' is what actually lands in authorized_keys on the VM.
+KEYLINE=$(grep -E '^[[:space:]]+- (ssh-|ecdsa-)' user-data | head -1 | sed 's/^[[:space:]]*-[[:space:]]*//')
 
-The key line must start with '      - ' followed by ssh-ed25519 or ssh-rsa.
+[[ -n "$KEYLINE" ]] || die "No SSH key found in user-data.
+
+The key line must start with '      - ' followed by your key, like:
+      - ssh-ed25519 AAAAC3Nza... you@yourmac
+
 Check that you pasted the whole line from 'cat ~/.ssh/id_ed25519.pub'."
-ok "SSH key present"
+
+KEYTYPE=$(printf '%s' "$KEYLINE" | awk '{print $1}')
+KEYBLOB=$(printf '%s' "$KEYLINE" | awk '{print $2}')
+
+# The classic mistake: pasting the whole key ON TOP OF an existing 'ssh-ed25519'
+# prefix, giving '- ssh-ed25519 ssh-ed25519 AAAA...'. sshd rejects that, and the
+# only symptom is 'Permission denied (publickey)' days later. Catch it here.
+case "$KEYBLOB" in
+  ssh-*|ecdsa-*)
+    die "Your key type appears TWICE on the same line:
+
+    $(printf '%.70s' "$KEYLINE")...
+
+Delete the first '$KEYTYPE ' so the line starts with the key type exactly
+once, then run this script again. It should look like:
+
+      - ssh-ed25519 AAAAC3Nza... you@yourmac"
+    ;;
+esac
+
+# A real key's second field is base64 and always starts with AAAA.
+case "$KEYBLOB" in
+  AAAA*) ;;
+  *) die "That doesn't look like a valid SSH public key:
+
+    $(printf '%.70s' "$KEYLINE")...
+
+The part after '$KEYTYPE' should be a long string starting with AAAA.
+Re-copy the ENTIRE output of:  cat ~/.ssh/id_ed25519.pub"
+    ;;
+esac
+
+# Final authority: let ssh-keygen parse it the way sshd will.
+printf '%s\n' "$KEYLINE" > "$PWD/.keycheck.tmp"
+if ! ssh-keygen -l -f "$PWD/.keycheck.tmp" >/dev/null 2>&1; then
+  rm -f "$PWD/.keycheck.tmp"
+  die "ssh-keygen can't read your key, so the VM won't accept it either:
+
+    $(printf '%.70s' "$KEYLINE")...
+
+Re-copy the ENTIRE output of:  cat ~/.ssh/id_ed25519.pub"
+fi
+rm -f "$PWD/.keycheck.tmp"
+ok "SSH key looks valid ($KEYTYPE)"
 
 # A single Tab makes the VM silently ignore this whole file, so catch it here.
 if grep -q "$(printf '\t')" user-data; then
@@ -63,7 +112,7 @@ head -1 user-data | grep -q '^#cloud-config' \
   || die "The first line of user-data must be exactly: #cloud-config"
 ok "header looks right"
 
-if grep -q 'dev:changeme' user-data; then
+if grep -q 'password: "changeme"' user-data; then
   warn "password is still 'changeme' — fine to start with, but worth changing"
 fi
 
