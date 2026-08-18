@@ -10,4 +10,8 @@ id_*
 *.pem
 *.key
 
+# Internal admin notes -- this repo is PUBLIC. ADMIN.md holds tenant,
+# subscription and app registration identifiers and must never be committed.
+ADMIN.md
+
 .DS_Store
